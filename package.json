@@ -1,0 +1,11 @@
+{
+  "name": "kano-engine",
+  "version": "0.1.0",
+  "description": "Kano model classification engine (plain JS), built from the methodology in KANO_METHODOLOGY.md",
+  "main": "src/kano.js",
+  "scripts": {
+    "test": "node --test"
+  },
+  "license": "UNLICENSED",
+  "private": true
+}

@@ -1,0 +1,9 @@
+# Local dev / machine-specific (absolute paths, preview server)
+.claude/
+
+# Source PDFs — copyrighted academic papers, not needed to run the app
+*.pdf
+
+# Node / tooling
+node_modules/
+*.log

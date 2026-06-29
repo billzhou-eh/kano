@@ -1,0 +1,2185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kano Survey Builder</title>
+<style>
+  :root {
+    --bg: #f4f5f7;
+    --panel: #ffffff;
+    --ink: #1f2430;
+    --muted: #6b7280;
+    --line: #e2e5ea;
+    --accent: #2f6fed;
+    --accent-ink: #ffffff;
+    --danger: #c43d3d;
+    --danger-bg: #fdecec;
+    --ok-bg: #e9f7ef;
+    --ok-ink: #1d7a46;
+    --radius: 8px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+  }
+  header.app {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 20px; background: var(--panel);
+    border-bottom: 1px solid var(--line);
+  }
+  header.app h1 { font-size: 16px; margin: 0; font-weight: 600; }
+  header.app .tag { color: var(--muted); font-size: 12px; }
+
+  #status {
+    display: none; padding: 8px 20px; font-size: 13px;
+  }
+  #status.error { display: block; background: var(--danger-bg); color: var(--danger); border-bottom: 1px solid #f3cccc; }
+  #status.ok    { display: block; background: var(--ok-bg); color: var(--ok-ink); border-bottom: 1px solid #cfead9; }
+
+  .layout { display: flex; min-height: calc(100vh - 50px); }
+  aside {
+    width: 270px; flex: none; background: var(--panel);
+    border-right: 1px solid var(--line); padding: 14px; overflow-y: auto;
+  }
+  main { flex: 1; padding: 22px 26px; overflow-y: auto; }
+
+  .sidebar-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .sidebar-head h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0; }
+
+  ul.survey-list { list-style: none; margin: 0; padding: 0; }
+  ul.survey-list li {
+    padding: 9px 10px; border-radius: var(--radius); cursor: pointer;
+    border: 1px solid transparent; margin-bottom: 4px;
+  }
+  ul.survey-list li:hover { background: #f0f3fb; }
+  ul.survey-list li.active { background: #e8f0ff; border-color: #cddcff; }
+  ul.survey-list li .s-title { font-weight: 600; }
+  ul.survey-list li .s-meta { color: var(--muted); font-size: 12px; }
+  .empty { color: var(--muted); font-size: 13px; padding: 8px 2px; }
+
+  button {
+    font: inherit; cursor: pointer; border-radius: 6px;
+    border: 1px solid var(--line); background: #fff; color: var(--ink);
+    padding: 6px 11px;
+  }
+  button:hover { background: #f5f6f8; }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  button.primary:hover { filter: brightness(1.05); }
+  button.danger { color: var(--danger); border-color: #ecc9c9; }
+  button.danger:hover { background: var(--danger-bg); }
+  button.icon { padding: 4px 8px; line-height: 1; }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+
+  input[type=text], textarea {
+    font: inherit; width: 100%; padding: 7px 9px;
+    border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink);
+  }
+  textarea { resize: vertical; min-height: 52px; }
+  label.field { display: block; margin-bottom: 12px; }
+  label.field > span { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; font-weight: 600; }
+
+  .card {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 18px; margin-bottom: 18px;
+  }
+  .card h3 { margin: 0 0 14px; font-size: 14px; }
+  .row { display: flex; gap: 10px; align-items: center; }
+  .spacer { flex: 1; }
+  .muted { color: var(--muted); }
+  .placeholder { color: var(--muted); text-align: center; padding: 60px 20px; }
+
+  .scale-grid { display: grid; grid-template-columns: 70px 1fr; gap: 8px 12px; align-items: center; }
+  .scale-grid .pos { font-size: 12px; color: var(--muted); }
+
+  ul.feature-list { list-style: none; margin: 0; padding: 0; }
+  li.feature {
+    border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 12px; margin-bottom: 10px; background: #fff;
+  }
+  li.feature .f-head { display: flex; align-items: center; gap: 8px; }
+  li.feature .f-name { font-weight: 600; }
+  li.feature .f-q { color: var(--muted); font-size: 12.5px; margin-top: 4px; }
+  .reorder { display: flex; flex-direction: column; gap: 2px; }
+  .reorder button { padding: 1px 6px; font-size: 11px; }
+
+  .preview {
+    background: #fafbfe; border: 1px dashed #c8d3ec; border-radius: var(--radius);
+    padding: 14px 16px; margin-top: 10px;
+  }
+  .preview .q { font-weight: 600; margin: 6px 0 8px; }
+  .preview .opts { list-style: none; margin: 0 0 14px; padding: 0; }
+  .preview .opts li { padding: 4px 0; color: #333; }
+  .preview .opts li::before { content: "○ "; color: var(--accent); }
+  .preview h4 { margin: 0 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+
+  .inline-add { display: flex; gap: 8px; margin-top: 12px; }
+
+  /* ----- mode toggle (Build / Collect) ----- */
+  .modes { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+  .modes button { border: 0; border-radius: 0; padding: 6px 16px; background: #fff; }
+  .modes button + button { border-left: 1px solid var(--line); }
+  .modes button.active, .modes button.active:hover { background: var(--accent); color: var(--accent-ink); }
+
+  /* ----- collect / kiosk mode ----- */
+  .collect-bar { display: flex; align-items: center; gap: 12px; max-width: 640px; margin: 0 auto 8px; }
+  .count-badge { background: #eef3ff; color: var(--accent); border: 1px solid #cddcff; border-radius: 20px; padding: 4px 12px; font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+  .kiosk { max-width: 640px; margin: 6px auto; }
+  .kiosk .card { padding: 26px; }
+  .kiosk-title { font-size: 20px; font-weight: 700; margin: 0 0 6px; }
+  .progress { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+  .kq { font-size: 16px; font-weight: 600; margin: 16px 0 10px; }
+  .optgroup { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+  .opt { display: flex; align-items: center; gap: 10px; text-align: left; width: 100%; padding: 11px 13px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+  .opt:hover { background: #f5f7fb; }
+  .opt.selected { border-color: var(--accent); background: #eaf1ff; box-shadow: inset 0 0 0 1px var(--accent); }
+  .optnum { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: #eef0f4; color: var(--muted); font-size: 12px; font-weight: 600; flex: none; }
+  .opt.selected .optnum { background: var(--accent); color: #fff; }
+  .kiosk-nav { display: flex; gap: 10px; align-items: center; margin-top: 10px; }
+  .review-list { list-style: none; margin: 4px 0 16px; padding: 0; }
+  .review-list li { padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .review-list .rf { font-weight: 600; }
+  .review-list .ra { color: var(--muted); font-size: 13px; margin-top: 3px; }
+  .big { font-size: 15px; padding: 9px 18px; }
+  .center { text-align: center; }
+
+  /* ----- analyze mode ----- */
+  .analyze-wrap { max-width: 1000px; }
+  table.results { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.results th, table.results td { padding: 7px 9px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+  table.results th { cursor: pointer; user-select: none; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .03em; }
+  table.results th:hover { color: var(--ink); }
+  table.results th.sorted { color: var(--ink); }
+  table.results td.name, table.results th.name { text-align: left; }
+  table.results tbody tr:hover td { background: #f7f9fc; }
+  .cat-badge { display: inline-block; min-width: 18px; text-align: center; padding: 2px 9px; border-radius: 12px; color: #fff; font-weight: 700; font-size: 12px; }
+  .lown { color: var(--danger); font-weight: 700; }
+  .q-warn { color: #d98324; font-weight: 700; }
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; margin: 6px 0 10px; font-size: 12px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .legend i { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+  .diagram-card svg { width: 100%; height: auto; display: block; border-radius: 6px; }
+  .small-note { font-size: 12px; color: var(--muted); margin-top: 8px; }
+
+  /* ----- About the Kano Model (explainer modal) ----- */
+  .about-btn { border-color: #cddcff; color: var(--accent); background: #f4f8ff; }
+  .about-btn:hover { background: #e8f0ff; }
+  .modal-backdrop { position: fixed; inset: 0; background: rgba(20,24,34,.45); display: flex; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow-y: auto; z-index: 100; }
+  .modal-backdrop[hidden] { display: none; }
+  .modal { background: var(--panel); border-radius: 12px; max-width: 720px; width: 100%; box-shadow: 0 14px 44px rgba(0,0,0,.28); }
+  .modal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 22px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--panel); border-radius: 12px 12px 0 0; }
+  .modal-head h2 { margin: 0; font-size: 18px; }
+  .modal-body { padding: 18px 24px 26px; }
+  .modal-body h3 { font-size: 14px; margin: 20px 0 7px; }
+  .modal-body p { font-size: 14px; margin: 7px 0; }
+  .modal-body .lead { color: var(--muted); }
+  .modal-body ul, .modal-body ol { margin: 6px 0; padding-left: 22px; }
+  .modal-body li { font-size: 14px; margin: 4px 0; }
+  .modal-body em, .modal-body i { color: var(--muted); font-style: italic; }
+  .about-cats { width: 100%; border-collapse: collapse; margin: 8px 0; }
+  .about-cats td { padding: 8px; border-bottom: 1px solid var(--line); font-size: 13.5px; vertical-align: top; }
+  .about-cats td:first-child { white-space: nowrap; width: 168px; }
+  .cat-dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 7px; vertical-align: middle; }
+
+  /* ----- CSV import preview ----- */
+  .modal-foot { display: flex; align-items: center; gap: 10px; padding: 14px 24px 18px; border-top: 1px solid var(--line); }
+  .import-summary { background: #f7f9fc; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin: 10px 0; font-size: 13.5px; }
+  .import-rejects { max-height: 220px; overflow-y: auto; border: 1px solid var(--line); border-radius: 8px; }
+  .import-reject { display: flex; gap: 10px; padding: 6px 10px; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .import-reject:last-child { border-bottom: 0; }
+  .rl-line { flex: none; width: 64px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .rl-reason { color: var(--ink); }
+</style>
+</head>
+<body>
+<header class="app">
+  <h1>Kano Survey Tool</h1>
+  <div class="modes" role="tablist" aria-label="Mode">
+    <button id="btn-mode-build" class="active" type="button">Build</button>
+    <button id="btn-mode-collect" type="button">Collect</button>
+    <button id="btn-mode-analyze" type="button">Analyze</button>
+  </div>
+  <span class="tag" id="mode-tag">build — surveys persist locally (IndexedDB)</span>
+  <button id="btn-about" class="about-btn" type="button" style="margin-left:auto">ⓘ&nbsp;What is the Kano Model?</button>
+</header>
+<div id="status" role="alert"></div>
+
+<div class="layout">
+  <aside>
+    <div class="sidebar-head">
+      <h2>Surveys</h2>
+      <div class="row" style="gap:6px">
+        <button id="btn-import-project" type="button" title="Import a project (.json): survey setup + all responses">Import</button>
+        <button class="primary" id="btn-new-survey" type="button">+ New</button>
+      </div>
+    </div>
+    <ul class="survey-list" id="survey-list"></ul>
+  </aside>
+  <main id="main"></main>
+</div>
+
+<div id="about-modal" class="modal-backdrop" hidden role="dialog" aria-modal="true" aria-labelledby="about-title">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="about-title">What is the Kano Model?</h2>
+      <button id="btn-about-close" class="icon" aria-label="Close" type="button">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="lead">A simple way to find out which product features actually drive customer satisfaction — so you know what to build first, what to simply get right, and what to skip.</p>
+
+      <h3>The core idea</h3>
+      <p>Not every feature affects customers the same way. Developed by Professor Noriaki Kano in 1984, the model sorts features by <em>how their presence or absence changes satisfaction</em> — some delight, some are simply expected, and some make no difference at all.</p>
+
+      <h3>The feature types</h3>
+      <table class="about-cats">
+        <tr><td><span class="cat-dot" style="background:#c43d3d"></span><b>Must-be</b> (M)</td><td>Basics customers take for granted. If missing they're upset; if present, no extra credit. <i>(e.g. brakes on a car)</i></td></tr>
+        <tr><td><span class="cat-dot" style="background:#2f6fed"></span><b>One-dimensional</b> (O)</td><td>More is better — satisfaction rises the more you deliver. <i>(e.g. fuel economy)</i></td></tr>
+        <tr><td><span class="cat-dot" style="background:#1d7a46"></span><b>Attractive</b> (A)</td><td>Delighters. Their presence excites; their absence isn't missed. Great for standing out. <i>(an unexpected extra)</i></td></tr>
+        <tr><td><span class="cat-dot" style="background:#6b7280"></span><b>Indifferent</b> (I)</td><td>Customers don't care either way — don't spend much effort here.</td></tr>
+        <tr><td><span class="cat-dot" style="background:#8b5cf6"></span><b>Reverse</b> (R)</td><td>Customers actually prefer this feature <i>not</i> to be there.</td></tr>
+        <tr><td><span class="cat-dot" style="background:#d98324"></span><b>Questionable</b> (Q)</td><td>Contradictory answers — usually a misread question. A data-quality flag, not a real category.</td></tr>
+      </table>
+
+      <h3>How the survey works</h3>
+      <p>For each feature, respondents answer the <b>same question two ways</b>:</p>
+      <ul>
+        <li><b>Functional:</b> “How do you feel if the product <i>has</i> this feature?”</li>
+        <li><b>Dysfunctional:</b> “How do you feel if it <i>does not</i> have it?”</li>
+      </ul>
+      <p>Each is answered on a 5-point scale (e.g. <i>I like it → I expect it → I am neutral → I can tolerate it → I dislike it</i>). Combining the two answers in a standard lookup table classifies the feature into one of the types above.</p>
+
+      <h3>Better &amp; Worse scores</h3>
+      <p>For each feature the tool also computes two numbers:</p>
+      <ul>
+        <li><b>Better</b> (0 → 1): how much <i>adding</i> the feature can raise satisfaction.</li>
+        <li><b>Worse</b> (0 → −1): how much <i>leaving it out</i> can drive dissatisfaction.</li>
+      </ul>
+      <p>Plotted together they form the classic Kano diagram, splitting features across the four quadrants.</p>
+
+      <h3>Why it's useful</h3>
+      <p>It turns “everyone wants everything” into a clear priority order. The classic takeaway: <b>fulfil every must-be, stay competitive on the one-dimensionals, and stand out with a few attractives</b> — and don't over-invest in basics or in things customers are indifferent to.</p>
+
+      <h3>Using this tool</h3>
+      <ol>
+        <li><b>Build</b> — create a survey and list the features you want to test.</li>
+        <li><b>Collect</b> — run the kiosk and gather responses, one person at a time.</li>
+        <li><b>Analyze</b> — see each feature's category, its Better/Worse scores, and the Kano diagram.</li>
+      </ol>
+      <p class="lead">Tip: aim for roughly 20–30+ responses before trusting the results — small samples are noisy.</p>
+
+      <p class="lead" style="font-size:12.5px;margin-top:16px">Based on Kano et al. (1984) and Berger et al. (1993). See KANO_METHODOLOGY.md for the exact evaluation table and formulas.</p>
+
+      <div style="margin-top:16px"><button id="btn-about-ok" class="primary" type="button">Got it</button></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===========================================================================
+ * SECTION 1 — KANO ENGINE  (verbatim copy of src/kano.js; keep the two in sync)
+ * ---------------------------------------------------------------------------
+ * The block between BEGIN/END below is copied byte-for-byte from src/kano.js.
+ * It is wrapped in an IIFE that supplies a local `module` object so the file's
+ * trailing `module.exports = {...}` works unchanged in the browser. Do not edit
+ * the verbatim region here — edit src/kano.js and re-paste so they stay synced.
+ * =========================================================================== */
+const KanoEngine = (function () {
+  const module = { exports: {} };
+  /* ===== BEGIN verbatim copy of src/kano.js ===== */
+'use strict';
+
+/**
+ * Kano model classification engine.
+ *
+ * Self-contained, no framework, no UI. Implements the methodology documented in
+ * ../KANO_METHODOLOGY.md, which was extracted from the project PDFs:
+ *   - Sauerwein et al. (1996)  [kano-model2.pdf]            — scale, table, rules, CS formulas
+ *   - Xu et al. (2009)         [An_analytical...pdf]        — table
+ *   - Witell et al. (2013)     [FULLTEXT02.pdf]             — table
+ *   - Muchtiar et al. (2018)   [Quality_Improvement...pdf]  — table (deviating Worse formula, rejected)
+ *   - Brand & Rese (2026)      [S0969...pdf]                — CS+/CS- formulas, worked examples
+ *
+ * The six categories: M (Must-be), O (One-dimensional), A (Attractive),
+ * I (Indifferent), R (Reverse), Q (Questionable).
+ */
+
+/** The six Kano categories. */
+const CATEGORIES = Object.freeze(['M', 'O', 'A', 'I', 'R', 'Q']);
+
+/**
+ * The five answer positions on the functional/dysfunctional scale (1-indexed).
+ * Position is what the engine classifies on; wording is label-agnostic.
+ */
+const SCALE = Object.freeze([
+  { position: 1, key: 'like', label: 'I like it that way' },
+  { position: 2, key: 'must-be', label: 'It must be that way' },
+  { position: 3, key: 'neutral', label: 'I am neutral' },
+  { position: 4, key: 'live-with', label: 'I can live with it that way' },
+  { position: 5, key: 'dislike', label: 'I dislike it that way' },
+]);
+
+/**
+ * Maps the various label wordings found across the source PDFs to a scale
+ * position (1-5). Lets callers feed any documented variant. Keys are lowercased.
+ */
+const LABEL_TO_POSITION = Object.freeze((() => {
+  const m = {
+    // Kano (1984) / Sauerwein / Xu — canonical
+    'i like it that way': 1, 'it must be that way': 2, 'i am neutral': 3,
+    'i can live with it that way': 4, 'i dislike it that way': 5,
+    // Berger et al. (1993) "American"
+    'i enjoy it that way': 1, 'i expect it that way': 2, 'i can accept it': 4,
+    // Witell (2013) Fig. 1
+    'i am expecting it to be that way': 2, 'i can accept it to be that way': 4,
+    // Chapman & Callegaro (2022)
+    'i like it': 1, 'i expect it': 2, 'i feel neutral': 3, 'i can tolerate it': 4, 'i dislike it': 5,
+    // short forms / Muchtiar (2018) headers
+    'like': 1, 'must-be': 2, 'must be': 2, 'expect': 2, 'neutral': 3,
+    'live-with': 4, 'live with': 4, 'accept': 4, 'tolerate': 4, 'may': 4, 'dislike': 5,
+  };
+  return m;
+})());
+
+/**
+ * The literal Kano evaluation table (KANO_METHODOLOGY.md §2).
+ * Rows = functional answer position (1-5); columns = dysfunctional answer position (1-5).
+ * Identical across Sauerwein Fig.6, Xu Table 2, Witell Fig.1, Muchtiar Table 1.
+ *
+ * Indexed [functional-1][dysfunctional-1].
+ *
+ *               dys: 1 like  2 must  3 neut  4 live  5 dislike
+ *   fun 1 like        Q        A       A       A        O
+ *   fun 2 must-be     R        I       I       I        M
+ *   fun 3 neutral     R        I       I       I        M
+ *   fun 4 live-with   R        I       I       I        M
+ *   fun 5 dislike     R        R       R       R        Q
+ */
+const EVALUATION_TABLE = Object.freeze([
+  Object.freeze(['Q', 'A', 'A', 'A', 'O']),
+  Object.freeze(['R', 'I', 'I', 'I', 'M']),
+  Object.freeze(['R', 'I', 'I', 'I', 'M']),
+  Object.freeze(['R', 'I', 'I', 'I', 'M']),
+  Object.freeze(['R', 'R', 'R', 'R', 'Q']),
+]);
+
+/**
+ * Tie-break priority for the dominant category (KANO_METHODOLOGY.md §3).
+ * Source rule is "M > O > A > I" (Sauerwein p.9 / Berger et al. 1993); R and Q
+ * are appended last as non-substantive. Lower index = higher priority.
+ */
+const DOMINANCE_ORDER = Object.freeze(['M', 'O', 'A', 'I', 'R', 'Q']);
+
+/**
+ * Normalize a single answer to a scale position 1-5.
+ * Accepts a number (1-5) or any documented label string (case-insensitive).
+ * @param {number|string} answer
+ * @returns {number} position in 1..5
+ */
+function toPosition(answer) {
+  if (typeof answer === 'number') {
+    if (Number.isInteger(answer) && answer >= 1 && answer <= 5) return answer;
+    throw new RangeError(`Answer must be an integer 1-5, got: ${answer}`);
+  }
+  if (typeof answer === 'string') {
+    const pos = LABEL_TO_POSITION[answer.trim().toLowerCase()];
+    if (pos) return pos;
+    throw new RangeError(`Unrecognized answer label: "${answer}"`);
+  }
+  throw new TypeError(`Answer must be a number 1-5 or a label string, got: ${typeof answer}`);
+}
+
+/**
+ * Classify one respondent's (functional, dysfunctional) answer pair into a Kano
+ * category via the literal lookup table. No heuristics.
+ * @param {number|string} functionalAnswer   1-5 or a label
+ * @param {number|string} dysfunctionalAnswer 1-5 or a label
+ * @returns {'M'|'O'|'A'|'I'|'R'|'Q'}
+ */
+function classify(functionalAnswer, dysfunctionalAnswer) {
+  const f = toPosition(functionalAnswer);
+  const d = toPosition(dysfunctionalAnswer);
+  return EVALUATION_TABLE[f - 1][d - 1];
+}
+
+/**
+ * Compute the dominant category from counts using the mode with the
+ * M > O > A > I > R > Q tie-break (KANO_METHODOLOGY.md §3).
+ * @param {Record<string, number>} counts
+ * @returns {'M'|'O'|'A'|'I'|'R'|'Q'|null} null if every count is 0
+ */
+function dominantCategory(counts) {
+  let best = null;
+  let bestCount = -1;
+  for (const cat of DOMINANCE_ORDER) {
+    const c = counts[cat] || 0;
+    if (c > bestCount) {
+      bestCount = c;
+      best = cat;
+    }
+    // equal counts: DOMINANCE_ORDER iteration order already enforces the
+    // M>O>A>I>R>Q tie-break, since we only replace on strictly-greater.
+  }
+  return bestCount > 0 ? best : null;
+}
+
+/**
+ * Better / Worse (CS) coefficients (KANO_METHODOLOGY.md §4).
+ *   Better = (A + O) / (A + O + M + I)
+ *   Worse  = -(O + M) / (A + O + M + I)
+ * Denominator excludes R and Q. Returns 0 for both when the denominator is 0.
+ * @param {Record<string, number>} counts
+ * @returns {{better: number, worse: number, denominator: number}}
+ */
+function csCoefficients(counts) {
+  const A = counts.A || 0;
+  const O = counts.O || 0;
+  const M = counts.M || 0;
+  const I = counts.I || 0;
+  const denom = A + O + M + I;
+  if (denom === 0) return { better: 0, worse: 0, denominator: 0 };
+  return {
+    better: (A + O) / denom,
+    worse: -(O + M) / denom,
+    denominator: denom,
+  };
+}
+
+/**
+ * Aggregate all respondents' answers for ONE feature.
+ *
+ * @param {Array<{functional:(number|string), dysfunctional:(number|string)} | [any, any]>} responses
+ *        Each item is either {functional, dysfunctional} or a [functional, dysfunctional] pair.
+ * @returns {{
+ *   counts: Record<string, number>,
+ *   total: number,
+ *   dominant: ('M'|'O'|'A'|'I'|'R'|'Q'|null),
+ *   better: number,
+ *   worse: number
+ * }}
+ */
+function aggregate(responses) {
+  if (!Array.isArray(responses)) {
+    throw new TypeError('aggregate expects an array of responses');
+  }
+  const counts = { M: 0, O: 0, A: 0, I: 0, R: 0, Q: 0 };
+  for (const r of responses) {
+    let f;
+    let d;
+    if (Array.isArray(r)) {
+      [f, d] = r;
+    } else if (r && typeof r === 'object') {
+      f = r.functional;
+      d = r.dysfunctional;
+    } else {
+      throw new TypeError('Each response must be {functional, dysfunctional} or [functional, dysfunctional]');
+    }
+    counts[classify(f, d)] += 1;
+  }
+  const { better, worse } = csCoefficients(counts);
+  return {
+    counts,
+    total: responses.length,
+    dominant: dominantCategory(counts),
+    better,
+    worse,
+  };
+}
+
+module.exports = {
+  CATEGORIES,
+  SCALE,
+  LABEL_TO_POSITION,
+  EVALUATION_TABLE,
+  DOMINANCE_ORDER,
+  toPosition,
+  classify,
+  dominantCategory,
+  csCoefficients,
+  aggregate,
+};
+  /* ===== END verbatim copy of src/kano.js ===== */
+  return module.exports;
+})();
+
+/* ===========================================================================
+ * SECTION 2 — APP (survey builder). Engine above is reused, not reimplemented.
+ * =========================================================================== */
+(function () {
+  'use strict';
+
+  // ----- Constants -----------------------------------------------------------
+  const DB_NAME = 'kano-app';
+  const DB_VERSION = 2; // v2: drop the unusable 'byFeature' index on responses (see openDB)
+  const STORE_SURVEYS = 'surveys';
+  const STORE_RESPONSES = 'responses'; // now populated by Collect mode
+
+  // Default validated label set: Berger / Center for Quality Management ("American"),
+  // ordered like -> dislike to match engine scale positions 1..5.
+  const DEFAULT_SCALE_LABELS = Object.freeze([
+    'I like it',
+    'I expect it',
+    'I am neutral',
+    'I can tolerate it',
+    'I dislike it',
+  ]);
+  // Engine position keys, used only to annotate the label editor (position 1..5).
+  const POSITION_KEYS = KanoEngine.SCALE.map((s) => s.key); // ['like','must-be','neutral','live-with','dislike']
+
+  // ----- App state -----------------------------------------------------------
+  const state = {
+    surveys: [],          // array of survey objects
+    selectedId: null,     // selected survey id
+    editingFeatureId: null, // feature being edited inline (null = none)
+    previewFeatureId: null, // feature shown in preview (defaults to first)
+    mode: 'build',        // 'build' | 'collect' | 'analyze'
+    session: null,        // in-progress respondent session (Collect mode), or null
+    responseCount: 0,     // responses collected for the selected survey
+    lastRecord: null,     // most recently submitted response record (for inspection)
+    analysisData: null,   // computed per-feature analysis for the selected survey
+    analysisTotal: 0,     // number of responses loaded for analysis
+    analysisSort: { key: 'category', dir: 1 }, // results-table sort (category asc => M first)
+  };
+
+  const saveTimers = new Map(); // surveyId -> debounce timer
+  let autoReturnTimer = null;   // kiosk: timer that returns to start after a thank-you
+
+  // ----- Small helpers -------------------------------------------------------
+  function genId() {
+    try {
+      if (crypto && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+    } catch (_) { /* fall through */ }
+    return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+  }
+
+  function lcFirst(s) {
+    s = (s || '').trim();
+    return s ? s.charAt(0).toLowerCase() + s.slice(1) : s;
+  }
+
+  function defaultFunctional(name) {
+    return `How do you feel if this product has ${lcFirst(name)}?`;
+  }
+  function defaultDysfunctional(name) {
+    return `How do you feel if this product does NOT have ${lcFirst(name)}?`;
+  }
+
+  function fmtDate(ts) {
+    try { return new Date(ts).toLocaleString(); } catch (_) { return String(ts); }
+  }
+
+  let statusTimer = null;
+  function showStatus(msg, kind) {
+    const bar = document.getElementById('status');
+    bar.textContent = msg;
+    bar.className = kind; // 'error' | 'ok' | ''
+    if (statusTimer) clearTimeout(statusTimer);
+    if (kind === 'ok') {
+      statusTimer = setTimeout(() => { bar.className = ''; bar.textContent = ''; }, 2500);
+    }
+  }
+  function showError(context, err) {
+    console.error(context, err);
+    const detail = (err && (err.message || err.name)) ? `${err.name || 'Error'}: ${err.message || err}` : String(err);
+    showStatus(`${context} — ${detail}`, 'error');
+  }
+
+  // DOM builder: el('div', {class:'x', onclick:fn}, [children|strings])
+  function el(tag, props, children) {
+    const node = document.createElement(tag);
+    if (props) {
+      for (const k in props) {
+        const v = props[k];
+        if (v == null) continue;
+        if (k === 'class') node.className = v;
+        else if (k === 'text') node.textContent = v;
+        else if (k === 'html') node.innerHTML = v;
+        else if (k.startsWith('on') && typeof v === 'function') node.addEventListener(k.slice(2), v);
+        else if (k === 'value') node.value = v;
+        else if (k === 'disabled') { if (v) node.setAttribute('disabled', ''); }
+        else node.setAttribute(k, v);
+      }
+    }
+    if (children != null) {
+      const arr = Array.isArray(children) ? children : [children];
+      for (const c of arr) {
+        if (c == null) continue;
+        node.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+      }
+    }
+    return node;
+  }
+
+  // ----- About / explainer modal --------------------------------------------
+  function openAbout() { const m = document.getElementById('about-modal'); if (m) m.hidden = false; }
+  function closeAbout() { const m = document.getElementById('about-modal'); if (m) m.hidden = true; }
+
+  // ----- IndexedDB layer -----------------------------------------------------
+  let dbPromise = null;
+  function openDB() {
+    if (dbPromise) return dbPromise;
+    dbPromise = new Promise((resolve, reject) => {
+      let req;
+      try {
+        req = indexedDB.open(DB_NAME, DB_VERSION);
+      } catch (err) {
+        reject(err);
+        return;
+      }
+      req.onupgradeneeded = (ev) => {
+        const db = req.result;
+        const upgradeTx = ev.target.transaction; // version-change transaction
+        if (!db.objectStoreNames.contains(STORE_SURVEYS)) {
+          db.createObjectStore(STORE_SURVEYS, { keyPath: 'id' });
+        }
+        let rs;
+        if (!db.objectStoreNames.contains(STORE_RESPONSES)) {
+          rs = db.createObjectStore(STORE_RESPONSES, { keyPath: 'id' });
+        } else {
+          rs = upgradeTx.objectStore(STORE_RESPONSES);
+        }
+        // bySurvey indexes a top-level field (surveyId) — valid; used for counts.
+        if (!rs.indexNames.contains('bySurvey')) {
+          rs.createIndex('bySurvey', 'surveyId', { unique: false });
+        }
+        // DROP byFeature: a response record stores featureId NESTED inside
+        // answers[] (one record per respondent session), not at the top level,
+        // so a keyPath:'featureId' index could never match this shape. Removed
+        // rather than left broken. (Per-feature reads come from answers[] in
+        // analysis; a multiEntry index can't target nested object fields.)
+        if (rs.indexNames.contains('byFeature')) {
+          rs.deleteIndex('byFeature');
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error || new Error('Failed to open IndexedDB'));
+      req.onblocked = () => reject(new Error('IndexedDB open blocked (another tab may hold an older version open)'));
+    });
+    return dbPromise;
+  }
+
+  function tx(db, store, mode) {
+    const t = db.transaction(store, mode);
+    return t.objectStore(store);
+  }
+
+  async function dbGetAllSurveys() {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      try {
+        const req = tx(db, STORE_SURVEYS, 'readonly').getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => reject(req.error || new Error('getAll failed'));
+      } catch (err) { reject(err); }
+    });
+  }
+
+  async function dbPutSurvey(survey) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      try {
+        const t = db.transaction(STORE_SURVEYS, 'readwrite');
+        t.objectStore(STORE_SURVEYS).put(survey);
+        t.oncomplete = () => resolve();
+        t.onerror = () => reject(t.error || new Error('put failed'));
+        t.onabort = () => reject(t.error || new Error('transaction aborted'));
+      } catch (err) { reject(err); }
+    });
+  }
+
+  async function dbDeleteSurvey(id) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      try {
+        const t = db.transaction(STORE_SURVEYS, 'readwrite');
+        t.objectStore(STORE_SURVEYS).delete(id);
+        t.oncomplete = () => resolve();
+        t.onerror = () => reject(t.error || new Error('delete failed'));
+        t.onabort = () => reject(t.error || new Error('transaction aborted'));
+      } catch (err) { reject(err); }
+    });
+  }
+
+  // Write one respondent-session record to the responses store.
+  async function dbPutResponse(rec) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      try {
+        const t = db.transaction(STORE_RESPONSES, 'readwrite');
+        t.objectStore(STORE_RESPONSES).put(rec);
+        t.oncomplete = () => resolve();
+        t.onerror = () => reject(t.error || new Error('put response failed'));
+        t.onabort = () => reject(t.error || new Error('transaction aborted'));
+      } catch (err) { reject(err); }
+    });
+  }
+
+  // Count responses for one survey via the bySurvey index (no full scan).
+  async function dbCountResponsesBySurvey(surveyId) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      try {
+        const idx = db.transaction(STORE_RESPONSES, 'readonly')
+          .objectStore(STORE_RESPONSES).index('bySurvey');
+        const req = idx.count(IDBKeyRange.only(surveyId));
+        req.onsuccess = () => resolve(req.result || 0);
+        req.onerror = () => reject(req.error || new Error('count failed'));
+      } catch (err) { reject(err); }
+    });
+  }
+
+  // Load all response records for one survey via the bySurvey index.
+  async function dbGetResponsesBySurvey(surveyId) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      try {
+        const idx = db.transaction(STORE_RESPONSES, 'readonly')
+          .objectStore(STORE_RESPONSES).index('bySurvey');
+        const req = idx.getAll(IDBKeyRange.only(surveyId));
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => reject(req.error || new Error('getAll responses failed'));
+      } catch (err) { reject(err); }
+    });
+  }
+
+  // Delete EVERY response for one survey (and only that survey) via the bySurvey
+  // index, in a single transaction. Resolves once the transaction commits.
+  async function dbDeleteResponsesBySurvey(surveyId) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      try {
+        const t = db.transaction(STORE_RESPONSES, 'readwrite');
+        const store = t.objectStore(STORE_RESPONSES);
+        const req = store.index('bySurvey').openKeyCursor(IDBKeyRange.only(surveyId));
+        req.onsuccess = () => {
+          const cursor = req.result;
+          if (cursor) { store.delete(cursor.primaryKey); cursor.continue(); }
+        };
+        req.onerror = () => reject(req.error || new Error('cursor failed'));
+        t.oncomplete = () => resolve();
+        t.onerror = () => reject(t.error || new Error('delete-by-survey failed'));
+        t.onabort = () => reject(t.error || new Error('transaction aborted'));
+      } catch (err) { reject(err); }
+    });
+  }
+
+  // Write many response records in a single transaction (CSV import).
+  async function dbBulkPutResponses(records) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      try {
+        const t = db.transaction(STORE_RESPONSES, 'readwrite');
+        const store = t.objectStore(STORE_RESPONSES);
+        for (const rec of records) store.put(rec);
+        t.oncomplete = () => resolve();
+        t.onerror = () => reject(t.error || new Error('bulk put failed'));
+        t.onabort = () => reject(t.error || new Error('transaction aborted'));
+      } catch (err) { reject(err); }
+    });
+  }
+
+  // Atomic project restore: write the survey AND all its responses in ONE
+  // transaction spanning both stores, so a partial import can't occur.
+  async function dbImportProject(survey, responses) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      try {
+        const t = db.transaction([STORE_SURVEYS, STORE_RESPONSES], 'readwrite');
+        t.objectStore(STORE_SURVEYS).put(survey);
+        const rs = t.objectStore(STORE_RESPONSES);
+        for (const r of responses) rs.put(r);
+        t.oncomplete = () => resolve();
+        t.onerror = () => reject(t.error || new Error('project import failed'));
+        t.onabort = () => reject(t.error || new Error('transaction aborted'));
+      } catch (err) { reject(err); }
+    });
+  }
+
+  // Persist a survey (debounced) and surface errors.
+  function scheduleSave(survey) {
+    if (saveTimers.has(survey.id)) clearTimeout(saveTimers.get(survey.id));
+    saveTimers.set(survey.id, setTimeout(() => {
+      saveTimers.delete(survey.id);
+      dbPutSurvey(survey)
+        .then(() => showStatus('Saved', 'ok'))
+        .catch((err) => showError('Could not save survey', err));
+    }, 250));
+  }
+  // Immediate save (structural changes); returns promise.
+  function saveNow(survey) {
+    return dbPutSurvey(survey)
+      .then(() => showStatus('Saved', 'ok'))
+      .catch((err) => { showError('Could not save survey', err); throw err; });
+  }
+
+  // ----- Model mutations -----------------------------------------------------
+  function currentSurvey() {
+    return state.surveys.find((s) => s.id === state.selectedId) || null;
+  }
+
+  function newSurvey() {
+    return {
+      id: genId(),
+      title: 'Untitled survey',
+      description: '',
+      createdAt: Date.now(),
+      scaleLabels: DEFAULT_SCALE_LABELS.slice(),
+      features: [],
+    };
+  }
+
+  function newFeature(name) {
+    name = (name || '').trim() || 'New feature';
+    return {
+      id: genId(),
+      name,
+      functionalQuestion: defaultFunctional(name),
+      dysfunctionalQuestion: defaultDysfunctional(name),
+    };
+  }
+
+  // ----- Rendering: sidebar --------------------------------------------------
+  function renderSidebar() {
+    const list = document.getElementById('survey-list');
+    list.innerHTML = '';
+    if (state.surveys.length === 0) {
+      list.appendChild(el('li', { class: 'empty' }, 'No surveys yet. Click “+ New”.'));
+      return;
+    }
+    // newest first
+    const sorted = state.surveys.slice().sort((a, b) => b.createdAt - a.createdAt);
+    for (const s of sorted) {
+      const li = el('li', {
+        class: s.id === state.selectedId ? 'active' : '',
+        onclick: () => { selectSurvey(s.id); },
+      }, [
+        el('div', { class: 's-title', text: s.title || '(untitled)' }),
+        el('div', { class: 's-meta', text: `${s.features.length} feature${s.features.length === 1 ? '' : 's'} · ${fmtDate(s.createdAt)}` }),
+      ]);
+      list.appendChild(li);
+    }
+  }
+
+  function selectSurvey(id) {
+    if (state.mode === 'collect' && id !== state.selectedId && sessionInProgress()) {
+      if (!confirm('A response session is in progress. Switch survey and discard it?')) return;
+    }
+    clearAutoReturn();
+    state.selectedId = id;
+    state.editingFeatureId = null;
+    state.session = null;
+    const s = currentSurvey();
+    state.previewFeatureId = s && s.features.length ? s.features[0].id : null;
+    renderSidebar();
+    renderContent();
+    if (state.mode === 'collect' && s) refreshResponseCount(s.id);
+  }
+
+  // ----- Mode switching ------------------------------------------------------
+  function renderContent() {
+    updateModeToggle();
+    if (state.mode === 'collect') renderCollect();
+    else if (state.mode === 'analyze') renderAnalyze();
+    else renderMain();
+  }
+
+  function updateModeToggle() {
+    const ids = { build: 'btn-mode-build', collect: 'btn-mode-collect', analyze: 'btn-mode-analyze' };
+    for (const m in ids) {
+      const btn = document.getElementById(ids[m]);
+      if (btn) btn.classList.toggle('active', state.mode === m);
+    }
+    const tag = document.getElementById('mode-tag');
+    const tags = {
+      build: 'build — surveys persist locally (IndexedDB)',
+      collect: 'collect — kiosk mode, one respondent at a time',
+      analyze: 'analyze — Kano categories & Better/Worse from collected responses',
+    };
+    if (tag) tag.textContent = tags[state.mode] || tags.build;
+  }
+
+  function setMode(mode) {
+    if (mode === state.mode) return;
+    if ((mode === 'collect' || mode === 'analyze') && !currentSurvey()) {
+      showStatus(`Select a survey first to ${mode === 'collect' ? 'collect responses' : 'analyze'}.`, 'error');
+      return;
+    }
+    if (state.mode === 'collect' && sessionInProgress()) {
+      if (!confirm('A response session is in progress. Leave Collect mode and discard it?')) return;
+    }
+    clearAutoReturn();
+    state.session = null;
+    state.mode = mode;
+    renderContent();
+    if (mode === 'collect') {
+      const s = currentSurvey();
+      if (s) refreshResponseCount(s.id);
+    }
+  }
+
+  async function refreshResponseCount(surveyId) {
+    try {
+      const n = await dbCountResponsesBySurvey(surveyId);
+      state.responseCount = n;
+      const node = document.getElementById('resp-count');
+      if (node) node.textContent = `${n} response${n === 1 ? '' : 's'} collected`;
+      // If we're on the Collect start screen, re-render so the Clear control
+      // appears/updates to match the freshly-loaded count.
+      if (state.mode === 'collect' && surveyId === state.selectedId && (!state.session || !state.session.active)) {
+        renderCollect();
+      }
+    } catch (err) {
+      showError('Could not count responses', err);
+    }
+  }
+
+  // ----- Rendering: main editor ---------------------------------------------
+  function renderMain() {
+    const main = document.getElementById('main');
+    main.innerHTML = '';
+    const s = currentSurvey();
+    if (!s) {
+      if (state.surveys.length) {
+        main.appendChild(el('div', { class: 'placeholder', text: 'Select a survey on the left to edit it.' }));
+      } else {
+        main.appendChild(el('div', { class: 'placeholder' }, [
+          el('div', { style: 'font-size:16px;font-weight:600;margin-bottom:6px', text: 'Welcome to the Kano Survey Tool' }),
+          el('div', { class: 'muted', style: 'margin-bottom:16px;max-width:440px', text: 'Build a survey, collect responses on a kiosk, then see which features delight your customers and which are just expected.' }),
+          el('div', { class: 'row', style: 'justify-content:center;gap:10px' }, [
+            el('button', { class: 'primary', onclick: createSurvey }, '+ Create your first survey'),
+            el('button', { onclick: openAbout }, 'New to Kano? Read the 2-min intro'),
+          ]),
+        ]));
+      }
+      return;
+    }
+    main.appendChild(renderSurveyMetaCard(s));
+    main.appendChild(renderScaleCard(s));
+    main.appendChild(renderFeaturesCard(s));
+    main.appendChild(renderPreviewCard(s));
+  }
+
+  function renderSurveyMetaCard(s) {
+    const titleInput = el('input', { type: 'text', value: s.title });
+    titleInput.addEventListener('input', () => {
+      s.title = titleInput.value;
+      renderSidebar();
+      scheduleSave(s);
+    });
+
+    const descInput = el('textarea', {}, s.description || '');
+    descInput.value = s.description || '';
+    descInput.addEventListener('input', () => { s.description = descInput.value; scheduleSave(s); });
+
+    const delBtn = el('button', {
+      class: 'danger',
+      onclick: () => deleteSurvey(s),
+    }, 'Delete survey');
+
+    return el('div', { class: 'card' }, [
+      el('div', { class: 'row' }, [
+        el('h3', {}, 'Survey'),
+        el('div', { class: 'spacer' }),
+        delBtn,
+      ]),
+      el('label', { class: 'field' }, [el('span', {}, 'Title'), titleInput]),
+      el('label', { class: 'field' }, [el('span', {}, 'Description'), descInput]),
+      el('div', { class: 'muted', text: `Created ${fmtDate(s.createdAt)} · id ${s.id}` }),
+      el('div', { style: 'margin-top:14px;border-top:1px solid var(--line);padding-top:14px' }, [
+        el('div', { class: 'row', style: 'gap:8px;flex-wrap:wrap' }, [
+          el('button', { onclick: () => exportProject(s), title: 'Bundle this survey’s setup + every response into one .json file (backup / move to another machine).' }, 'Export project (JSON)'),
+          el('button', { onclick: () => downloadRawResponsesCSV(s), title: 'Export just the response rows as CSV (for Excel or re-import).' }, 'Export responses (CSV)'),
+        ]),
+        el('div', { class: 'small-note', text: 'Project (JSON) = full backup incl. setup; re-import from the sidebar “Import”. Responses (CSV) = just the rows; re-import from Collect mode.' }),
+      ]),
+    ]);
+  }
+
+  function renderScaleCard(s) {
+    const grid = el('div', { class: 'scale-grid' });
+    for (let i = 0; i < 5; i++) {
+      const input = el('input', { type: 'text', value: s.scaleLabels[i] || '' });
+      input.addEventListener('input', () => {
+        s.scaleLabels[i] = input.value;
+        refreshPreviewOnly(s);
+        scheduleSave(s);
+      });
+      grid.appendChild(el('div', { class: 'pos', text: `${i + 1}. ${POSITION_KEYS[i]}` }));
+      grid.appendChild(input);
+    }
+    const resetBtn = el('button', {
+      onclick: () => {
+        s.scaleLabels = DEFAULT_SCALE_LABELS.slice();
+        renderMain();
+        saveNow(s);
+      },
+    }, 'Reset to default (Berger / CQM)');
+
+    return el('div', { class: 'card' }, [
+      el('div', { class: 'row' }, [
+        el('h3', {}, 'Answer scale (5 points, like → dislike)'),
+        el('div', { class: 'spacer' }),
+        resetBtn,
+      ]),
+      el('div', { class: 'muted', html: 'These labels render the engine positions 1–5. Each respondent answer maps to a fixed position regardless of wording.' }),
+      el('div', { style: 'height:10px' }),
+      grid,
+    ]);
+  }
+
+  function renderFeaturesCard(s) {
+    const listEl = el('ul', { class: 'feature-list' });
+
+    if (s.features.length === 0) {
+      listEl.appendChild(el('li', { class: 'empty' }, 'No features yet. Add one below.'));
+    }
+
+    s.features.forEach((f, idx) => {
+      if (state.editingFeatureId === f.id) {
+        listEl.appendChild(renderFeatureEditor(s, f, idx));
+      } else {
+        listEl.appendChild(renderFeatureRow(s, f, idx));
+      }
+    });
+
+    const addInput = el('input', { type: 'text', placeholder: 'New feature name (e.g. Battery life)' });
+    const addBtn = el('button', { class: 'primary' }, 'Add feature');
+    const doAdd = () => {
+      const name = addInput.value.trim();
+      if (!name) { addInput.focus(); return; }
+      const f = newFeature(name);
+      s.features.push(f);
+      state.editingFeatureId = f.id;
+      if (!state.previewFeatureId) state.previewFeatureId = f.id;
+      addInput.value = '';
+      renderMain();
+      renderSidebar();
+      saveNow(s);
+    };
+    addBtn.addEventListener('click', doAdd);
+    addInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') doAdd(); });
+
+    return el('div', { class: 'card' }, [
+      el('h3', {}, `Features (${s.features.length})`),
+      listEl,
+      el('div', { class: 'inline-add' }, [addInput, addBtn]),
+    ]);
+  }
+
+  function renderFeatureRow(s, f, idx) {
+    const up = el('button', { class: 'icon', title: 'Move up', disabled: idx === 0,
+      onclick: () => moveFeature(s, idx, -1) }, '▲');
+    const down = el('button', { class: 'icon', title: 'Move down', disabled: idx === s.features.length - 1,
+      onclick: () => moveFeature(s, idx, +1) }, '▼');
+
+    return el('li', { class: 'feature' }, [
+      el('div', { class: 'f-head' }, [
+        el('div', { class: 'reorder' }, [up, down]),
+        el('div', {}, [
+          el('div', { class: 'f-name', text: f.name || '(unnamed)' }),
+          el('div', { class: 'f-q', text: '▸ ' + f.functionalQuestion }),
+          el('div', { class: 'f-q', text: '▸ ' + f.dysfunctionalQuestion }),
+        ]),
+        el('div', { class: 'spacer' }),
+        el('button', { onclick: () => { state.previewFeatureId = f.id; renderMain(); } }, 'Preview'),
+        el('button', { onclick: () => { state.editingFeatureId = f.id; renderMain(); } }, 'Edit'),
+        el('button', { class: 'danger', onclick: () => deleteFeature(s, f) }, 'Delete'),
+      ]),
+    ]);
+  }
+
+  function renderFeatureEditor(s, f, idx) {
+    const nameInput = el('input', { type: 'text', value: f.name });
+    const funcInput = el('textarea', {}); funcInput.value = f.functionalQuestion;
+    const dysInput = el('textarea', {}); dysInput.value = f.dysfunctionalQuestion;
+
+    nameInput.addEventListener('input', () => { f.name = nameInput.value; renderSidebar(); scheduleSave(s); });
+    funcInput.addEventListener('input', () => { f.functionalQuestion = funcInput.value; refreshPreviewOnly(s); scheduleSave(s); });
+    dysInput.addEventListener('input', () => { f.dysfunctionalQuestion = dysInput.value; refreshPreviewOnly(s); scheduleSave(s); });
+
+    const regen = el('button', {
+      onclick: () => {
+        f.functionalQuestion = defaultFunctional(f.name);
+        f.dysfunctionalQuestion = defaultDysfunctional(f.name);
+        funcInput.value = f.functionalQuestion;
+        dysInput.value = f.dysfunctionalQuestion;
+        refreshPreviewOnly(s);
+        saveNow(s);
+      },
+    }, 'Regenerate questions from name');
+
+    const done = el('button', { class: 'primary',
+      onclick: () => { state.editingFeatureId = null; state.previewFeatureId = f.id; renderMain(); } }, 'Done');
+
+    return el('li', { class: 'feature' }, [
+      el('label', { class: 'field' }, [el('span', {}, 'Feature name'), nameInput]),
+      el('label', { class: 'field' }, [el('span', {}, 'Functional question (feature present)'), funcInput]),
+      el('label', { class: 'field' }, [el('span', {}, 'Dysfunctional question (feature absent)'), dysInput]),
+      el('div', { class: 'row' }, [regen, el('div', { class: 'spacer' }), done]),
+    ]);
+  }
+
+  function renderPreviewCard(s) {
+    let f = s.features.find((x) => x.id === state.previewFeatureId);
+    if (!f && s.features.length) f = s.features[0];
+
+    const body = el('div', { id: 'preview-body' });
+    if (!f) {
+      body.appendChild(el('div', { class: 'muted', text: 'Add a feature to see how its paired questions will look to a respondent.' }));
+    } else {
+      body.appendChild(buildPreview(s, f));
+    }
+    return el('div', { class: 'card' }, [
+      el('h3', {}, 'Respondent preview (read-only)'),
+      body,
+    ]);
+  }
+
+  function buildPreview(s, f) {
+    const opts = () => {
+      const ul = el('ul', { class: 'opts' });
+      for (let i = 0; i < 5; i++) ul.appendChild(el('li', { text: s.scaleLabels[i] || `(label ${i + 1})` }));
+      return ul;
+    };
+    return el('div', { class: 'preview' }, [
+      el('h4', {}, `Feature: ${f.name || '(unnamed)'}`),
+      el('div', { class: 'q', text: f.functionalQuestion }),
+      opts(),
+      el('div', { class: 'q', text: f.dysfunctionalQuestion }),
+      opts(),
+    ]);
+  }
+
+  // Re-render just the preview body (so typing in inputs doesn't lose focus).
+  function refreshPreviewOnly(s) {
+    const body = document.getElementById('preview-body');
+    if (!body) return;
+    let f = s.features.find((x) => x.id === state.previewFeatureId);
+    if (!f && s.features.length) f = s.features[0];
+    body.innerHTML = '';
+    if (f) body.appendChild(buildPreview(s, f));
+  }
+
+  // ----- Actions -------------------------------------------------------------
+  async function createSurvey() {
+    clearAutoReturn();
+    state.mode = 'build';
+    state.session = null;
+    const s = newSurvey();
+    state.surveys.push(s);
+    try {
+      await saveNow(s);
+      selectSurvey(s.id);
+    } catch (_) {
+      // saveNow already surfaced the error; roll back in-memory add
+      state.surveys = state.surveys.filter((x) => x.id !== s.id);
+      renderSidebar();
+    }
+  }
+
+  async function deleteSurvey(s) {
+    if (!confirm(`Delete survey “${s.title || 'untitled'}” and its ${s.features.length} feature(s)? This cannot be undone.`)) return;
+    try {
+      await dbDeleteSurvey(s.id);
+      state.surveys = state.surveys.filter((x) => x.id !== s.id);
+      if (state.selectedId === s.id) state.selectedId = null;
+      renderSidebar();
+      renderMain();
+      showStatus('Survey deleted', 'ok');
+    } catch (err) {
+      showError('Could not delete survey', err);
+    }
+  }
+
+  function moveFeature(s, idx, dir) {
+    const j = idx + dir;
+    if (j < 0 || j >= s.features.length) return;
+    const tmp = s.features[idx];
+    s.features[idx] = s.features[j];
+    s.features[j] = tmp;
+    renderMain();
+    saveNow(s);
+  }
+
+  function deleteFeature(s, f) {
+    if (!confirm(`Delete feature “${f.name || 'unnamed'}”?`)) return;
+    s.features = s.features.filter((x) => x.id !== f.id);
+    if (state.editingFeatureId === f.id) state.editingFeatureId = null;
+    if (state.previewFeatureId === f.id) state.previewFeatureId = s.features.length ? s.features[0].id : null;
+    renderMain();
+    renderSidebar();
+    saveNow(s);
+  }
+
+  // ===========================================================================
+  // COLLECT MODE (respondent kiosk). Collection only — no classify/aggregate here.
+  // ===========================================================================
+
+  // True while a respondent is partway through answering (unsaved in-progress).
+  // 'thanks' is already saved, 'start' has no data — neither counts as in-progress.
+  function sessionInProgress() {
+    const s = state.session;
+    return !!(s && s.active && (s.screen === 'feature' || s.screen === 'review'));
+  }
+
+  function clearAutoReturn() {
+    if (autoReturnTimer) { clearTimeout(autoReturnTimer); autoReturnTimer = null; }
+  }
+
+  function labelFor(s, pos) {
+    return pos ? (s.scaleLabels[pos - 1] || `(label ${pos})`) : '—';
+  }
+
+  function renderCollect() {
+    const main = document.getElementById('main');
+    main.innerHTML = '';
+    const s = currentSurvey();
+    if (!s) {
+      main.appendChild(el('div', { class: 'placeholder' },
+        state.surveys.length ? 'Select a survey on the left to collect responses.'
+                             : 'Create a survey in Build mode first.'));
+      return;
+    }
+
+    // Always-visible bar: survey name + running response count (+ Exit if mid-session).
+    const bar = el('div', { class: 'collect-bar' }, [
+      el('div', { class: 'kiosk-title', style: 'font-size:15px;margin:0', text: s.title || '(untitled)' }),
+      el('div', { class: 'spacer' }),
+      el('span', { class: 'count-badge', id: 'resp-count',
+        text: `${state.responseCount || 0} response${(state.responseCount || 0) === 1 ? '' : 's'} collected` }),
+    ]);
+    if (sessionInProgress()) {
+      bar.appendChild(el('button', { class: 'danger', onclick: exitSession }, 'Exit session'));
+    }
+    main.appendChild(bar);
+
+    const kiosk = el('div', { class: 'kiosk' });
+    const sess = state.session;
+    if (!sess || !sess.active) kiosk.appendChild(renderStartScreen(s));
+    else if (sess.screen === 'feature') kiosk.appendChild(renderFeatureScreen(s));
+    else if (sess.screen === 'review') kiosk.appendChild(renderReviewScreen(s));
+    else if (sess.screen === 'thanks') kiosk.appendChild(renderThanksScreen(s));
+    else kiosk.appendChild(renderStartScreen(s));
+    main.appendChild(kiosk);
+  }
+
+  function renderStartScreen(s) {
+    const noFeatures = s.features.length === 0;
+    const begin = el('button', { class: 'primary big', disabled: noFeatures,
+      onclick: () => beginSession(s) }, 'Begin');
+    const respN = state.responseCount || 0;
+    const tools = [];
+    if (!noFeatures) tools.push(el('button', { onclick: pickAndPreviewImport }, 'Import responses (CSV)'));
+    if (respN > 0) tools.push(el('button', { class: 'danger', onclick: clearResponses }, `Clear responses (${respN})`));
+    const toolsBlock = tools.length ? el('div', { style: 'margin-top:22px;border-top:1px solid var(--line);padding-top:16px' }, [
+      el('div', { class: 'row', style: 'justify-content:center;gap:10px' }, tools),
+      el('div', { class: 'small-note', text: respN > 0
+        ? `${respN} response${respN === 1 ? '' : 's'} stored for “${s.title || 'untitled'}”. Import appends; Clear deletes (this survey only).`
+        : 'Import appends responses from a CSV into this survey (positions 1–5 only).' }),
+    ]) : null;
+    return el('div', { class: 'card center' }, [
+      el('div', { class: 'progress', text: 'Kano survey' }),
+      el('h2', { class: 'kiosk-title', text: s.title || '(untitled)' }),
+      s.description ? el('p', { class: 'muted', text: s.description }) : null,
+      el('p', { class: 'big', style: 'padding:0',
+        text: `${s.features.length} feature${s.features.length === 1 ? '' : 's'} · ${s.features.length * 2} questions` }),
+      noFeatures ? el('p', { class: 'muted', text: 'This survey has no features yet. Add features in Build mode first.' }) : null,
+      el('div', { style: 'height:8px' }),
+      begin,
+      toolsBlock,
+    ]);
+  }
+
+  function optionGroup(s, current, onPick) {
+    const wrap = el('div', { class: 'optgroup' });
+    for (let i = 0; i < 5; i++) {
+      const pos = i + 1; // engine position 1..5, like -> dislike
+      wrap.appendChild(el('button', {
+        class: 'opt' + (current === pos ? ' selected' : ''),
+        onclick: () => onPick(pos),
+      }, [
+        el('span', { class: 'optnum', text: String(pos) }),
+        el('span', { text: s.scaleLabels[i] || `(label ${pos})` }),
+      ]));
+    }
+    return wrap;
+  }
+
+  function renderFeatureScreen(s) {
+    const sess = state.session;
+    const f = s.features[sess.index];
+    const a = sess.answers[f.id];
+    const both = a.functional != null && a.dysfunctional != null;
+    const isLast = sess.index === s.features.length - 1;
+
+    const back = el('button', { disabled: sess.index === 0,
+      onclick: () => { if (sess.index > 0) { sess.index--; renderCollect(); } } }, 'Back');
+    const next = el('button', { class: 'primary', disabled: !both, onclick: () => {
+      if (isLast) sess.screen = 'review'; else sess.index++;
+      renderCollect();
+    } }, isLast ? 'Review answers' : 'Next feature');
+
+    return el('div', { class: 'card' }, [
+      el('div', { class: 'progress', text: `Feature ${sess.index + 1} of ${s.features.length}` }),
+      el('h2', { class: 'kiosk-title', text: f.name || '(unnamed)' }),
+      el('div', { class: 'kq', text: f.functionalQuestion }),
+      optionGroup(s, a.functional, (pos) => { a.functional = pos; renderCollect(); }),
+      el('div', { class: 'kq', text: f.dysfunctionalQuestion }),
+      optionGroup(s, a.dysfunctional, (pos) => { a.dysfunctional = pos; renderCollect(); }),
+      el('div', { class: 'kiosk-nav' }, [back, el('div', { class: 'spacer' }), next]),
+      both ? null : el('div', { class: 'muted', style: 'margin-top:8px', text: 'Answer both questions to continue.' }),
+    ]);
+  }
+
+  function renderReviewScreen(s) {
+    const sess = state.session;
+    const list = el('ul', { class: 'review-list' });
+    s.features.forEach((f) => {
+      const a = sess.answers[f.id];
+      list.appendChild(el('li', {}, [
+        el('div', { class: 'rf', text: f.name || '(unnamed)' }),
+        el('div', { class: 'ra', text: `Present → ${labelFor(s, a.functional)}   ·   Absent → ${labelFor(s, a.dysfunctional)}` }),
+      ]));
+    });
+    const back = el('button', { onclick: () => { sess.screen = 'feature'; sess.index = s.features.length - 1; renderCollect(); } }, 'Back');
+    const submit = el('button', { class: 'primary big', onclick: () => submitSession(s) }, 'Submit response');
+    return el('div', { class: 'card' }, [
+      el('div', { class: 'progress', text: 'Review & submit' }),
+      el('h2', { class: 'kiosk-title', text: 'Check your answers' }),
+      list,
+      el('div', { class: 'kiosk-nav' }, [back, el('div', { class: 'spacer' }), submit]),
+    ]);
+  }
+
+  function renderThanksScreen(s) {
+    return el('div', { class: 'card center' }, [
+      el('h2', { class: 'kiosk-title', text: 'Thank you!' }),
+      el('p', { class: 'big', style: 'padding:0', text: 'Your response has been recorded.' }),
+      el('p', { class: 'muted', text: 'Returning to the start screen for the next respondent…' }),
+      el('div', { style: 'height:8px' }),
+      el('button', { class: 'primary big', onclick: nextRespondent }, 'Next respondent'),
+    ]);
+  }
+
+  // ----- Collect actions -----------------------------------------------------
+  function beginSession(s) {
+    if (!s.features.length) return;
+    const answers = {};
+    s.features.forEach((f) => { answers[f.id] = { functional: null, dysfunctional: null }; });
+    state.session = { active: true, screen: 'feature', index: 0, answers };
+    renderCollect();
+  }
+
+  function exitSession() {
+    if (!confirm('Discard this in-progress response? The answers will NOT be saved.')) return;
+    clearAutoReturn();
+    state.session = null;
+    renderCollect();
+  }
+
+  function nextRespondent() {
+    clearAutoReturn();
+    state.session = null;
+    renderCollect();
+  }
+
+  // Destructive: wipe all responses for the SELECTED survey only, after an
+  // explicit confirmation that names the survey and the count.
+  async function clearResponses() {
+    const s = currentSurvey();
+    if (!s) return;
+    const n = state.responseCount || 0;
+    if (n === 0) { showStatus('No responses to clear for this survey.', 'ok'); return; }
+    const ok = confirm(
+      `Delete all ${n} response${n === 1 ? '' : 's'} for “${s.title || 'untitled'}”?\n\n`
+      + 'This affects ONLY this survey and cannot be undone.'
+    );
+    if (!ok) return;
+    try {
+      await dbDeleteResponsesBySurvey(s.id);
+      await refreshResponseCount(s.id); // updates count + re-renders the start screen
+      showStatus(`Cleared ${n} response${n === 1 ? '' : 's'} for “${s.title || 'untitled'}”.`, 'ok');
+    } catch (err) {
+      showError('Could not clear responses', err);
+    }
+  }
+
+  async function submitSession(s) {
+    const sess = state.session;
+    // One record per respondent session. Store engine POSITIONS (1-5), never
+    // label text, so re-labeling the survey can't corrupt past responses.
+    const rec = {
+      id: genId(),
+      surveyId: s.id,
+      submittedAt: Date.now(),
+      answers: s.features.map((f) => ({
+        featureId: f.id,
+        functional: sess.answers[f.id].functional,
+        dysfunctional: sess.answers[f.id].dysfunctional,
+      })),
+    };
+    try {
+      await dbPutResponse(rec);
+      state.lastRecord = rec;
+      sess.screen = 'thanks';
+      renderCollect();
+      await refreshResponseCount(s.id);
+      showStatus('Response saved', 'ok');
+      clearAutoReturn();
+      autoReturnTimer = setTimeout(() => {
+        if (state.mode === 'collect' && state.session && state.session.screen === 'thanks') {
+          nextRespondent();
+        }
+      }, 4000);
+    } catch (err) {
+      showError('Could not save response', err);
+    }
+  }
+
+  // ===========================================================================
+  // ANALYZE MODE (read-only). Reuses KanoEngine.aggregate — no reimplementation
+  // of classify/aggregate here. Collection stays in Collect mode.
+  // ===========================================================================
+  const CAT_COLORS = { M: '#c43d3d', O: '#2f6fed', A: '#1d7a46', I: '#6b7280', R: '#8b5cf6', Q: '#d98324' };
+  const CAT_ORDER = { M: 0, O: 1, A: 2, I: 3, R: 4, Q: 5 };
+  const CAT_NAMES = { M: 'Must-be', O: 'One-dimensional', A: 'Attractive', I: 'Indifferent', R: 'Reverse', Q: 'Questionable' };
+  const LOW_N = 10; // below this, Kano numbers are too noisy to trust
+
+  function avg(arr) { return arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0; }
+
+  function escHtml(s) {
+    return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  }
+
+  // For each feature: gather its {functional,dysfunctional} pairs across all
+  // responses (match by featureId), then defer to the verified engine.
+  function computeAnalysis(s, responses) {
+    return s.features.map((f) => {
+      const pairs = [];
+      for (const r of responses) {
+        const ans = (r.answers || []).find((a) => a.featureId === f.id);
+        if (ans && ans.functional != null && ans.dysfunctional != null) {
+          pairs.push({ functional: ans.functional, dysfunctional: ans.dysfunctional });
+        }
+      }
+      const agg = KanoEngine.aggregate(pairs); // {counts,total,dominant,better,worse}
+      return {
+        feature: f,
+        counts: agg.counts,
+        dominant: agg.dominant,
+        better: agg.better,
+        worse: agg.worse,
+        n: agg.total,
+      };
+    });
+  }
+
+  async function renderAnalyze() {
+    const main = document.getElementById('main');
+    main.innerHTML = '';
+    const s = currentSurvey();
+    if (!s) {
+      main.appendChild(el('div', { class: 'placeholder' },
+        state.surveys.length ? 'Select a survey on the left to analyze.' : 'Create a survey first.'));
+      return;
+    }
+    main.appendChild(el('div', { class: 'placeholder', text: 'Loading responses…' }));
+    let responses;
+    try {
+      responses = await dbGetResponsesBySurvey(s.id);
+    } catch (err) {
+      showError('Could not load responses', err);
+      main.innerHTML = '';
+      main.appendChild(el('div', { class: 'placeholder', text: 'Could not load responses — see the status bar.' }));
+      return;
+    }
+    if (state.mode !== 'analyze' || state.selectedId !== s.id) return; // stale async result
+    if (!responses.length) {
+      main.innerHTML = '';
+      main.appendChild(el('div', { class: 'placeholder' }, [
+        el('div', { style: 'font-size:15px;font-weight:600;margin-bottom:6px', text: 'No responses yet' }),
+        el('div', { class: 'muted', text: 'Collect some in Collect mode, then come back to analyze.' }),
+      ]));
+      return;
+    }
+    state.analysisData = computeAnalysis(s, responses);
+    state.analysisTotal = responses.length;
+    renderAnalysisView(s);
+  }
+
+  function sortedAnalysis() {
+    const { key, dir } = state.analysisSort;
+    const val = (d) => {
+      switch (key) {
+        case 'name': return (d.feature.name || '').toLowerCase();
+        case 'category': return d.dominant ? CAT_ORDER[d.dominant] : 99;
+        case 'better': return d.better;
+        case 'worse': return d.worse;
+        case 'n': return d.n;
+        default: return d.counts[key] || 0; // M/O/A/I/R/Q columns
+      }
+    };
+    return (state.analysisData || []).slice().sort((a, b) => {
+      const va = val(a); const vb = val(b);
+      if (va < vb) return -1 * dir;
+      if (va > vb) return 1 * dir;
+      return (a.feature.name || '').localeCompare(b.feature.name || '');
+    });
+  }
+
+  function setSort(key) {
+    const srt = state.analysisSort;
+    if (srt.key === key) srt.dir = -srt.dir;
+    else { srt.key = key; srt.dir = (key === 'name' || key === 'category') ? 1 : -1; }
+    renderAnalysisView(currentSurvey());
+  }
+
+  function renderAnalysisView(s) {
+    const main = document.getElementById('main');
+    main.innerHTML = '';
+    const data = state.analysisData || [];
+    const plotted = data.filter((d) => d.n > 0);
+    const meanBetter = avg(plotted.map((d) => d.better));
+    const meanWorse = avg(plotted.map((d) => d.worse));
+
+    const wrap = el('div', { class: 'analyze-wrap' });
+    wrap.appendChild(el('div', { class: 'card' }, [
+      el('div', { class: 'row' }, [
+        el('h3', {}, 'Analysis'),
+        el('div', { class: 'spacer' }),
+        el('button', { onclick: () => downloadRawResponsesCSV(s),
+          title: 'One row per answer (respondent, featureId, feature, functional, dysfunctional, submittedAt). Re-importable; also serves as an import template.' },
+          'Download raw responses (CSV)'),
+        el('button', { onclick: () => downloadCSV(s),
+          title: 'Per-feature aggregates (M/O/A/I/R/Q counts, Better/Worse). NOT re-importable.' },
+          'Download results (CSV)'),
+      ]),
+      el('div', { class: 'muted', text:
+        `${state.analysisTotal} response${state.analysisTotal === 1 ? '' : 's'} · ${data.length} feature${data.length === 1 ? '' : 's'}`
+        + ` · dividers = mean Better ${meanBetter.toFixed(2)}, mean Worse ${meanWorse.toFixed(2)}` }),
+      el('div', { class: 'small-note', text:
+        '“Raw responses” = one row per answer, re-importable (and an import template). “Results” = per-feature aggregates, not re-importable.' }),
+      data.some((d) => d.n > 0 && d.n < LOW_N)
+        ? el('div', { class: 'small-note lown', text: `⚠ Features marked ⚠ have n < ${LOW_N} — too few responses for a reliable Kano classification (aim for 20–30+).` })
+        : null,
+    ]));
+    wrap.appendChild(renderResultsTable(s));
+    wrap.appendChild(renderDiagramCard(s, meanBetter, meanWorse));
+    main.appendChild(wrap);
+  }
+
+  function renderResultsTable() {
+    const cols = [
+      { key: 'name', label: 'Feature', cls: 'name' },
+      { key: 'category', label: 'Category' },
+      { key: 'M', label: 'M' }, { key: 'O', label: 'O' }, { key: 'A', label: 'A' },
+      { key: 'I', label: 'I' }, { key: 'R', label: 'R' }, { key: 'Q', label: 'Q' },
+      { key: 'better', label: 'Better' }, { key: 'worse', label: 'Worse' }, { key: 'n', label: 'n' },
+    ];
+    const headRow = el('tr', {});
+    for (const c of cols) {
+      const active = state.analysisSort.key === c.key;
+      const arrow = active ? (state.analysisSort.dir > 0 ? ' ▲' : ' ▼') : '';
+      headRow.appendChild(el('th', {
+        class: (c.cls || '') + (active ? ' sorted' : ''),
+        title: 'Click to sort',
+        onclick: () => setSort(c.key),
+      }, c.label + arrow));
+    }
+    const tbody = el('tbody', {});
+    for (const d of sortedAnalysis()) {
+      const badge = d.dominant
+        ? el('span', { class: 'cat-badge', style: `background:${CAT_COLORS[d.dominant]}`, title: CAT_NAMES[d.dominant], text: d.dominant })
+        : el('span', { class: 'muted', text: '—' });
+      const nCell = d.n < LOW_N
+        ? el('td', {}, [`${d.n} `, el('span', { class: 'lown', title: `n < ${LOW_N}: too few for a reliable Kano classification`, text: '⚠' })])
+        : el('td', { text: String(d.n) });
+      const qCell = el('td', {
+        class: d.counts.Q > 0 ? 'q-warn' : '',
+        title: d.counts.Q > 0 ? 'Questionable (contradictory) answers — data-quality signal' : '',
+        text: String(d.counts.Q),
+      });
+      tbody.appendChild(el('tr', {}, [
+        el('td', { class: 'name', text: d.feature.name || '(unnamed)' }),
+        el('td', {}, [badge]),
+        el('td', { text: String(d.counts.M) }),
+        el('td', { text: String(d.counts.O) }),
+        el('td', { text: String(d.counts.A) }),
+        el('td', { text: String(d.counts.I) }),
+        el('td', { text: String(d.counts.R) }),
+        qCell,
+        el('td', { text: d.better.toFixed(2) }),
+        el('td', { text: d.worse.toFixed(2) }),
+        nCell,
+      ]));
+    }
+    return el('div', { class: 'card' }, [
+      el('h3', {}, 'Results by feature'),
+      el('table', { class: 'results' }, [el('thead', {}, [headRow]), tbody]),
+      el('div', { class: 'small-note', text: 'Click any column header to re-sort. Default sort: dominant category (M, O, A, I, R, Q). Q = contradictory answers (data-quality signal).' }),
+    ]);
+  }
+
+  function renderDiagramCard(s, meanBetter, meanWorse) {
+    const legend = el('div', { class: 'legend' });
+    for (const k of ['M', 'O', 'A', 'I', 'R', 'Q']) {
+      legend.appendChild(el('span', {}, [
+        el('i', { style: `background:${CAT_COLORS[k]}` }),
+        document.createTextNode(`${k} · ${CAT_NAMES[k]}`),
+      ]));
+    }
+    const holder = el('div', {});
+    holder.innerHTML = buildKanoSVG(state.analysisData || [], meanBetter, meanWorse);
+    return el('div', { class: 'card diagram-card' }, [
+      el('h3', {}, 'Kano diagram — Better vs. Worse'),
+      legend,
+      holder,
+      el('div', { class: 'small-note', text:
+        'Axes: y = Better (0→1, satisfaction when present); x = Worse (0→−1, dissatisfaction when absent, stronger to the right). '
+        + 'Dashed dividers are the MEAN Better and MEAN Worse across plotted features. '
+        + 'Quadrants: top-left Attractive · top-right One-dimensional · bottom-left Indifferent · bottom-right Must-be.' }),
+    ]);
+  }
+
+  // Inline SVG Better/Worse scatter — no charting library.
+  function buildKanoSVG(data, meanBetter, meanWorse) {
+    const VBW = 760, VBH = 470, PL = 80, PT = 28, PR = 600, PB = 405;
+    const PW = PR - PL, PH = PB - PT;
+    const xPix = (w) => PL + (-w) * PW;     // w in [-1,0] -> 0 left .. 1 right
+    const yPix = (b) => PT + (1 - b) * PH;  // b in [0,1]  -> 1 top .. 0 bottom
+    let g = '';
+    g += `<rect x="${PL}" y="${PT}" width="${PW}" height="${PH}" fill="#fff" stroke="#d7dbe2"/>`;
+    const ticks = [0, 0.25, 0.5, 0.75, 1];
+    for (const t of ticks) {
+      const gx = PL + t * PW, gy = PT + (1 - t) * PH;
+      g += `<line x1="${gx}" y1="${PT}" x2="${gx}" y2="${PB}" stroke="#eef1f5"/>`;
+      g += `<line x1="${PL}" y1="${gy}" x2="${PR}" y2="${gy}" stroke="#eef1f5"/>`;
+      g += `<text x="${gx}" y="${PB + 16}" font-size="11" fill="#6b7280" text-anchor="middle">${t === 0 ? '0' : '−' + t}</text>`;
+      g += `<text x="${PL - 8}" y="${gy + 4}" font-size="11" fill="#6b7280" text-anchor="end">${t}</text>`;
+    }
+    // quadrant labels (placement matches the sign convention in KANO_METHODOLOGY.md §4)
+    g += `<text x="${PL + 10}" y="${PT + 18}" font-size="12" fill="${CAT_COLORS.A}" opacity="0.7" font-style="italic">Attractive</text>`;
+    g += `<text x="${PR - 10}" y="${PT + 18}" font-size="12" fill="${CAT_COLORS.O}" opacity="0.7" font-style="italic" text-anchor="end">One-dimensional</text>`;
+    g += `<text x="${PL + 10}" y="${PB - 8}" font-size="12" fill="${CAT_COLORS.I}" opacity="0.8" font-style="italic">Indifferent</text>`;
+    g += `<text x="${PR - 10}" y="${PB - 8}" font-size="12" fill="${CAT_COLORS.M}" opacity="0.7" font-style="italic" text-anchor="end">Must-be</text>`;
+    // mean dividers
+    const mx = xPix(meanWorse), my = yPix(meanBetter);
+    g += `<line x1="${mx.toFixed(1)}" y1="${PT}" x2="${mx.toFixed(1)}" y2="${PB}" stroke="#9aa3b2" stroke-dasharray="5 4"/>`;
+    g += `<line x1="${PL}" y1="${my.toFixed(1)}" x2="${PR}" y2="${my.toFixed(1)}" stroke="#9aa3b2" stroke-dasharray="5 4"/>`;
+    // axis titles
+    g += `<text x="${PL + PW / 2}" y="${PB + 36}" font-size="12" fill="#1f2430" text-anchor="middle">Worse coefficient (0 → −1; stronger dissatisfaction to the right)</text>`;
+    g += `<text x="22" y="${PT + PH / 2}" font-size="12" fill="#1f2430" text-anchor="middle" transform="rotate(-90 22 ${PT + PH / 2})">Better coefficient (0 → 1; stronger satisfaction upward)</text>`;
+    // points + non-overlapping labels
+    const placed = [];
+    for (const d of data) {
+      if (d.n <= 0) continue;
+      const px = xPix(d.worse), py = yPix(d.better), col = CAT_COLORS[d.dominant] || '#333';
+      g += `<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="5" fill="${col}" stroke="#fff" stroke-width="1.5"/>`;
+      let lx = px + 9, ly = py + 4;
+      while (placed.some((p) => Math.abs(p.ly - ly) < 13 && Math.abs(p.lx - lx) < 110)) ly += 14;
+      placed.push({ lx, ly });
+      if (Math.abs(ly - (py + 4)) > 1) {
+        g += `<line x1="${px.toFixed(1)}" y1="${py.toFixed(1)}" x2="${(lx - 2).toFixed(1)}" y2="${(ly - 3).toFixed(1)}" stroke="#c2c8d2"/>`;
+      }
+      g += `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" font-size="11" fill="#1f2430">${escHtml(d.feature.name || '(unnamed)')} <tspan fill="${col}" font-weight="700">${d.dominant || ''}</tspan></text>`;
+    }
+    return `<svg viewBox="0 0 ${VBW} ${VBH}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Kano Better-Worse diagram">${g}</svg>`;
+  }
+
+  function downloadCSV(s) {
+    try {
+      const data = state.analysisData || [];
+      const head = ['Feature', 'Dominant', 'M', 'O', 'A', 'I', 'R', 'Q', 'Better', 'Worse', 'n'];
+      const esc = (v) => { v = String(v); return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+      const lines = [head.join(',')];
+      for (const d of data) {
+        lines.push([
+          d.feature.name || '', d.dominant || '',
+          d.counts.M, d.counts.O, d.counts.A, d.counts.I, d.counts.R, d.counts.Q,
+          d.better.toFixed(4), d.worse.toFixed(4), d.n,
+        ].map(esc).join(','));
+      }
+      const blob = new Blob([lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = (s.title || 'survey').replace(/[^\w-]+/g, '_') + '_kano.csv';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      showStatus('CSV downloaded', 'ok');
+    } catch (err) {
+      showError('Could not export CSV', err);
+    }
+  }
+
+  // Response-level export: one row per answer, in the exact format
+  // parseResponsesCSV accepts. Emits BOTH featureId and feature name so a later
+  // rename can't break re-import (importer matches id-first), and so the file
+  // doubles as an import template. Distinct from downloadCSV (per-feature aggregates).
+  async function downloadRawResponsesCSV(s) {
+    try {
+      const responses = await dbGetResponsesBySurvey(s.id);
+      const nameById = new Map((s.features || []).map((f) => [f.id, f.name || '']));
+      const esc = (v) => { v = String(v == null ? '' : v); return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+      const head = ['respondent', 'featureId', 'feature', 'functional', 'dysfunctional', 'submittedAt'];
+      const lines = [head.join(',')];
+      let rowCount = 0;
+      for (const r of responses) {
+        for (const a of (r.answers || [])) {
+          lines.push([
+            r.id,                                   // respondent = original record id (groups answers on re-import)
+            a.featureId,
+            nameById.has(a.featureId) ? nameById.get(a.featureId) : '',
+            a.functional,                            // engine position 1–5
+            a.dysfunctional,                         // engine position 1–5
+            (r.submittedAt == null ? '' : r.submittedAt),
+          ].map(esc).join(','));
+          rowCount++;
+        }
+      }
+      const blob = new Blob([lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = (s.title || 'survey').replace(/[^\w-]+/g, '_') + '_raw_responses.csv';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      showStatus(`Exported ${responses.length} raw response${responses.length === 1 ? '' : 's'} (${rowCount} row${rowCount === 1 ? '' : 's'}).`, 'ok');
+    } catch (err) {
+      showError('Could not export raw responses', err);
+    }
+  }
+
+  // ===========================================================================
+  // CSV IMPORT — Step 2: pure parser/validator. NO DB writes, NO UI, NO side
+  // effects. Given CSV text + the target survey, returns normalized response
+  // records plus a list of rejected rows (line number + reason). Stores engine
+  // POSITIONS 1–5, never label text; bad rows are rejected, never coerced.
+  //
+  // Accepted long format (header row required; columns matched by name, any order):
+  //   respondent, feature, functional, dysfunctional   (+ optional featureId, submittedAt)
+  // Feature resolution: match on featureId when that cell is present/non-blank;
+  // otherwise fall back to case-insensitive feature-name match.
+  // ===========================================================================
+
+  // Quote-aware CSV tokenizer. Handles quoted fields with embedded commas and
+  // newlines, "" escapes, CRLF/LF, and a leading BOM. Returns [{line, fields}]
+  // (line = 1-based source line where the row starts), skipping blank lines.
+  function tokenizeCSV(text) {
+    if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1); // strip BOM
+    const rows = [];
+    let field = '', fields = [], inQuotes = false, line = 1, rowStartLine = 1, started = false;
+    const pushField = () => { fields.push(field); field = ''; };
+    const endRow = () => {
+      pushField();
+      const empty = fields.length === 1 && fields[0].trim() === '';
+      if (!empty) rows.push({ line: rowStartLine, fields });
+      fields = []; started = false;
+    };
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (!started) { rowStartLine = line; started = true; }
+      if (inQuotes) {
+        if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else inQuotes = false; }
+        else { field += c; if (c === '\n') line++; }
+      } else {
+        if (c === '"') inQuotes = true;
+        else if (c === ',') pushField();
+        else if (c === '\r') { /* ignore; handled by \n */ }
+        else if (c === '\n') { endRow(); line++; }
+        else field += c;
+      }
+    }
+    if (started || field !== '' || fields.length > 0) endRow();
+    return rows;
+  }
+
+  // Map header cells to column indices, tolerant of common header variants.
+  function mapHeaders(cells) {
+    const alias = {
+      respondent: ['respondent', 'respondentid', 'respondent_id', 'respondent id', 'session', 'sessionid', 'session_id'],
+      featureId: ['featureid', 'feature_id', 'feature id'],
+      feature: ['feature', 'featurename', 'feature_name', 'feature name'],
+      functional: ['functional', 'functional_answer', 'functionalanswer'],
+      dysfunctional: ['dysfunctional', 'dysfunctional_answer', 'dysfunctionalanswer'],
+      submittedAt: ['submittedat', 'submitted_at', 'submitted at', 'timestamp', 'date'],
+    };
+    const idx = {};
+    cells.forEach((raw, i) => {
+      const h = String(raw || '').trim().toLowerCase();
+      for (const key in alias) { if (idx[key] == null && alias[key].includes(h)) idx[key] = i; }
+    });
+    return idx;
+  }
+
+  // Strict engine-position parse: integer 1–5 only. Rejects 0, 6, decimals,
+  // signs, label text, and blanks — never coerces.
+  function parsePosition(raw) {
+    const v = String(raw == null ? '' : raw).trim();
+    if (v === '') return { ok: false, reason: 'is blank' };
+    if (!/^\d+$/.test(v)) return { ok: false, reason: `value "${v}" is not an integer 1–5` };
+    const n = Number(v);
+    if (n < 1 || n > 5) return { ok: false, reason: `value "${v}" is out of range (must be 1–5)` };
+    return { ok: true, value: n };
+  }
+
+  function parseSubmittedAt(raw) {
+    const v = String(raw == null ? '' : raw).trim();
+    if (v === '') return { ok: true, value: null };
+    if (/^\d+$/.test(v)) return { ok: true, value: Number(v) };
+    const t = Date.parse(v);
+    if (!isNaN(t)) return { ok: true, value: t };
+    return { ok: false, reason: `invalid submittedAt "${v}"` };
+  }
+
+  function resolveFeature(idVal, nameVal, byId, byName) {
+    const id = String(idVal == null ? '' : idVal).trim();
+    if (id !== '') { // featureId present → match by id (error if not found; no silent name fallback)
+      const f = byId.get(id);
+      return f ? { ok: true, feature: f } : { ok: false, reason: `unknown featureId "${id}"` };
+    }
+    const name = String(nameVal == null ? '' : nameVal).trim();
+    if (name === '') return { ok: false, reason: 'blank feature (need a feature name or featureId)' };
+    const m = byName.get(name.toLowerCase());
+    if (!m || !m.length) return { ok: false, reason: `unknown feature "${name}"` };
+    if (m.length > 1) return { ok: false, reason: `ambiguous feature name "${name}" (matches ${m.length} features — use featureId)` };
+    return { ok: true, feature: m[0] };
+  }
+
+  // Main entry. Returns { records, rejected, summary }.
+  //   records:  [{ respondent, submittedAt, answers:[{featureId, functional, dysfunctional}] }]
+  //   rejected: [{ line, reason }]
+  //   summary:  { dataRows, accepted, rejected, records }
+  function parseResponsesCSV(text, survey) {
+    const rejected = [];
+    const out = { records: [], rejected, summary: { dataRows: 0, accepted: 0, rejected: 0, records: 0 } };
+    if (typeof text !== 'string' || text.trim() === '') {
+      rejected.push({ line: 0, reason: 'empty file' });
+      out.summary.rejected = rejected.length; return out;
+    }
+    const rows = tokenizeCSV(text);
+    if (!rows.length) {
+      rejected.push({ line: 0, reason: 'no rows found' });
+      out.summary.rejected = rejected.length; return out;
+    }
+    const header = rows[0];
+    const idx = mapHeaders(header.fields);
+    const missing = [];
+    if (idx.respondent == null) missing.push('respondent');
+    if (idx.functional == null) missing.push('functional');
+    if (idx.dysfunctional == null) missing.push('dysfunctional');
+    if (idx.feature == null && idx.featureId == null) missing.push('feature or featureId');
+    if (missing.length) {
+      rejected.push({ line: header.line, reason: `missing required column(s): ${missing.join(', ')}` });
+      out.summary.rejected = rejected.length; return out;
+    }
+
+    const byId = new Map((survey.features || []).map((f) => [f.id, f]));
+    const byName = new Map();
+    for (const f of (survey.features || [])) {
+      const k = (f.name || '').trim().toLowerCase();
+      if (!byName.has(k)) byName.set(k, []);
+      byName.get(k).push(f);
+    }
+    const cell = (fields, i) => (i == null || i >= fields.length) ? '' : fields[i];
+
+    const recByResp = new Map();
+    const seen = new Set();
+    for (let r = 1; r < rows.length; r++) {
+      const { line, fields } = rows[r];
+      out.summary.dataRows++;
+      const respondent = cell(fields, idx.respondent).trim();
+      if (respondent === '') { rejected.push({ line, reason: 'blank respondent' }); continue; }
+      const fr = resolveFeature(cell(fields, idx.featureId), cell(fields, idx.feature), byId, byName);
+      if (!fr.ok) { rejected.push({ line, reason: fr.reason }); continue; }
+      const key = respondent + ' ' + fr.feature.id;
+      if (seen.has(key)) { rejected.push({ line, reason: `duplicate (respondent "${respondent}", feature "${fr.feature.name}") — already provided` }); continue; }
+      const pf = parsePosition(cell(fields, idx.functional));
+      if (!pf.ok) { rejected.push({ line, reason: `functional ${pf.reason}` }); continue; }
+      const pd = parsePosition(cell(fields, idx.dysfunctional));
+      if (!pd.ok) { rejected.push({ line, reason: `dysfunctional ${pd.reason}` }); continue; }
+      let submittedAt = null;
+      if (idx.submittedAt != null) {
+        const sa = parseSubmittedAt(cell(fields, idx.submittedAt));
+        if (!sa.ok) { rejected.push({ line, reason: sa.reason }); continue; }
+        submittedAt = sa.value;
+      }
+      seen.add(key);
+      out.summary.accepted++;
+      let rec = recByResp.get(respondent);
+      if (!rec) { rec = { respondent, submittedAt, answers: [] }; recByResp.set(respondent, rec); out.records.push(rec); }
+      if (rec.submittedAt == null && submittedAt != null) rec.submittedAt = submittedAt;
+      rec.answers.push({ featureId: fr.feature.id, functional: pf.value, dysfunctional: pd.value });
+    }
+    out.summary.records = out.records.length;
+    out.summary.rejected = rejected.length;
+    return out;
+  }
+
+  // Step 3 — pick a CSV file, parse it (no write), and open the dry-run preview.
+  function pickAndPreviewImport() {
+    const s = currentSurvey();
+    if (!s) return;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.csv,text/csv,text/plain';
+    input.addEventListener('change', () => {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const res = parseResponsesCSV(String(reader.result || ''), s);
+          openImportPreview(s, res, file.name);
+        } catch (err) {
+          showError('Could not parse CSV', err);
+        }
+      };
+      reader.onerror = () => showError('Could not read file', reader.error);
+      reader.readAsText(file);
+    });
+    input.click();
+  }
+
+  // Dry-run preview modal. Shows valid counts + every rejected row (line + reason).
+  // NOTHING is written until the explicit Import button is pressed.
+  function openImportPreview(s, res, filename) {
+    const { records, rejected, summary } = res;
+    const canImport = records.length > 0;
+
+    const backdrop = el('div', { class: 'modal-backdrop' });
+    const onKey = (e) => { if (e.key === 'Escape') close(); };
+    function close() {
+      if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+      document.removeEventListener('keydown', onKey);
+    }
+
+    const importBtn = el('button', { class: 'primary', disabled: !canImport },
+      canImport ? `Import ${records.length} respondent${records.length === 1 ? '' : 's'}` : 'Import');
+    importBtn.addEventListener('click', async () => {
+      importBtn.disabled = true; // guard against double-submit
+      try {
+        const now = Date.now();
+        const finalRecords = records.map((r) => ({
+          id: genId(),
+          surveyId: s.id,
+          submittedAt: (typeof r.submittedAt === 'number') ? r.submittedAt : now,
+          answers: r.answers.map((a) => ({ featureId: a.featureId, functional: a.functional, dysfunctional: a.dysfunctional })),
+        }));
+        await dbBulkPutResponses(finalRecords);
+        close();
+        if (currentSurvey() && currentSurvey().id === s.id) {
+          await refreshResponseCount(s.id); // updates count + re-renders the start screen
+        }
+        showStatus(`Imported ${finalRecords.length} response${finalRecords.length === 1 ? '' : 's'} into “${s.title || 'untitled'}”.`, 'ok');
+      } catch (err) {
+        importBtn.disabled = false;
+        showError('Could not import responses', err);
+      }
+    });
+
+    const rejectList = el('div', { class: 'import-rejects' });
+    rejected.forEach((rj) => rejectList.appendChild(el('div', { class: 'import-reject' }, [
+      el('span', { class: 'rl-line', text: rj.line ? `Line ${rj.line}` : 'File' }),
+      el('span', { class: 'rl-reason', text: rj.reason }),
+    ])));
+
+    const body = el('div', { class: 'modal-body' }, [
+      el('p', {}, ['Importing into ', el('b', { text: s.title || '(untitled)' }), ' — appends to existing responses (merge). To replace instead, Clear first.']),
+      filename ? el('p', { class: 'muted', style: 'font-size:12.5px', text: `File: ${filename}` }) : null,
+      el('div', { class: 'import-summary' }, [
+        el('div', {}, [el('b', { text: `${summary.accepted} answer${summary.accepted === 1 ? '' : 's'}` }), ' across ', el('b', { text: `${records.length} respondent${records.length === 1 ? '' : 's'}` }), ' will be imported.']),
+        rejected.length
+          ? el('div', { class: 'q-warn', text: `${rejected.length} row${rejected.length === 1 ? '' : 's'} will be skipped (listed below).` })
+          : el('div', { class: 'muted', text: 'No rows skipped.' }),
+      ]),
+      rejected.length ? el('h3', { text: 'Skipped rows' }) : null,
+      rejected.length ? rejectList : null,
+      !canImport ? el('p', { class: 'lown', text: 'Nothing valid to import — fix the file and try again.' }) : null,
+    ]);
+
+    const modal = el('div', { class: 'modal' }, [
+      el('div', { class: 'modal-head' }, [el('h2', { text: 'Import responses — preview' }), el('button', { class: 'icon', onclick: close, 'aria-label': 'Close' }, '✕')]),
+      body,
+      el('div', { class: 'modal-foot' }, [el('button', { onclick: close }, 'Cancel'), el('div', { class: 'spacer' }), importBtn]),
+    ]);
+    backdrop.appendChild(modal);
+    backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(); });
+    document.addEventListener('keydown', onKey);
+    document.body.appendChild(backdrop);
+  }
+
+  // ===========================================================================
+  // PROJECT JSON — whole-project backup/restore. Bundles the ENTIRE survey
+  // object (every field it has — setup, scale labels, all features/questions,
+  // and any fields added later) plus every response into one .json file.
+  // ===========================================================================
+  function exportProject(s) {
+    dbGetResponsesBySurvey(s.id).then((responses) => {
+      try {
+        const bundle = {
+          kind: 'kano-project',
+          version: 1,
+          app: 'Kano Survey Tool',
+          exportedAt: Date.now(),
+          survey: s,          // full survey object, serialized verbatim
+          responses,          // every response for this survey
+        };
+        const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = (s.title || 'survey').replace(/[^\w-]+/g, '_') + '_project.json';
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        showStatus(`Exported project “${s.title || 'untitled'}” (${responses.length} response${responses.length === 1 ? '' : 's'}).`, 'ok');
+      } catch (err) { showError('Could not export project', err); }
+    }).catch((err) => showError('Could not export project', err));
+  }
+
+  function parseProjectBundle(text) {
+    let data;
+    try { data = JSON.parse(text); }
+    catch (e) { return { error: 'Not valid JSON — ' + (e.message || e) }; }
+    if (!data || typeof data !== 'object') return { error: 'Not a project file.' };
+    if (data.kind !== 'kano-project') return { error: 'Not a Kano project file (missing kind "kano-project").' };
+    const survey = data.survey;
+    if (!survey || typeof survey !== 'object' || !Array.isArray(survey.features)) {
+      return { error: 'Project file has no valid survey.' };
+    }
+    const responses = Array.isArray(data.responses) ? data.responses : [];
+    return { bundle: data, survey, responses };
+  }
+
+  function pickAndPreviewProject() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,application/json';
+    input.addEventListener('change', () => {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const parsed = parseProjectBundle(String(reader.result || ''));
+        if (parsed.error) { showError('Could not import project', parsed.error); return; }
+        openProjectPreview(parsed, file.name);
+      };
+      reader.onerror = () => showError('Could not read file', reader.error);
+      reader.readAsText(file);
+    });
+    input.click();
+  }
+
+  function openProjectPreview(parsed, filename) {
+    const { survey, responses } = parsed;
+    const featureCount = survey.features.length;
+    const respCount = responses.length;
+
+    const backdrop = el('div', { class: 'modal-backdrop' });
+    const onKey = (e) => { if (e.key === 'Escape') close(); };
+    function close() { if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop); document.removeEventListener('keydown', onKey); }
+
+    const importBtn = el('button', { class: 'primary' }, 'Import project');
+    importBtn.addEventListener('click', async () => {
+      importBtn.disabled = true;
+      try { await importProject(parsed); close(); }
+      catch (err) { importBtn.disabled = false; showError('Could not import project', err); }
+    });
+
+    const body = el('div', { class: 'modal-body' }, [
+      el('p', { class: 'lead' }, 'This is added as a NEW project — your existing surveys are untouched.'),
+      el('div', { class: 'import-summary' }, [
+        el('div', {}, [el('b', { text: survey.title || '(untitled)' })]),
+        el('div', { class: 'muted', text: `${featureCount} feature${featureCount === 1 ? '' : 's'} · ${respCount} response${respCount === 1 ? '' : 's'}` }),
+        parsed.bundle.exportedAt ? el('div', { class: 'muted', style: 'font-size:12px', text: `Exported ${fmtDate(parsed.bundle.exportedAt)}` }) : null,
+      ]),
+      filename ? el('p', { class: 'muted', style: 'font-size:12.5px', text: `File: ${filename}` }) : null,
+    ]);
+
+    const modal = el('div', { class: 'modal' }, [
+      el('div', { class: 'modal-head' }, [el('h2', { text: 'Import project — preview' }), el('button', { class: 'icon', onclick: close, 'aria-label': 'Close' }, '✕')]),
+      body,
+      el('div', { class: 'modal-foot' }, [el('button', { onclick: close }, 'Cancel'), el('div', { class: 'spacer' }), importBtn]),
+    ]);
+    backdrop.appendChild(modal);
+    backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(); });
+    document.addEventListener('keydown', onKey);
+    document.body.appendChild(backdrop);
+  }
+
+  // Restore as a NEW project: fresh survey id + fresh response ids (so importing
+  // never clobbers an existing survey). Internal featureIds are kept as-is
+  // (unique within the project), so survey/response references stay consistent.
+  async function importProject(parsed) {
+    const survey = JSON.parse(JSON.stringify(parsed.survey)); // clone; never mutate the file data
+    const rawResponses = parsed.responses || [];
+    const newId = genId();
+    survey.id = newId;
+    if (typeof survey.createdAt !== 'number') survey.createdAt = Date.now();
+    if (typeof survey.title !== 'string') survey.title = 'Imported survey';
+    if (typeof survey.description !== 'string') survey.description = '';
+    if (!Array.isArray(survey.scaleLabels) || survey.scaleLabels.length !== 5) survey.scaleLabels = DEFAULT_SCALE_LABELS.slice();
+    const responses = rawResponses.map((r) => ({
+      id: genId(),
+      surveyId: newId,
+      submittedAt: (typeof r.submittedAt === 'number') ? r.submittedAt : Date.now(),
+      answers: Array.isArray(r.answers) ? r.answers.map((a) => ({ featureId: a.featureId, functional: a.functional, dysfunctional: a.dysfunctional })) : [],
+    }));
+    await dbImportProject(survey, responses);
+    state.surveys.push(survey);
+    clearAutoReturn();
+    state.session = null;
+    state.mode = 'build';
+    selectSurvey(newId);
+    showStatus(`Imported “${survey.title}” (${responses.length} response${responses.length === 1 ? '' : 's'}).`, 'ok');
+  }
+
+  // ----- Boot ----------------------------------------------------------------
+  async function init() {
+    document.getElementById('btn-new-survey').addEventListener('click', createSurvey);
+    document.getElementById('btn-import-project').addEventListener('click', pickAndPreviewProject);
+    document.getElementById('btn-mode-build').addEventListener('click', () => setMode('build'));
+    document.getElementById('btn-mode-collect').addEventListener('click', () => setMode('collect'));
+    document.getElementById('btn-mode-analyze').addEventListener('click', () => setMode('analyze'));
+    // About / explainer modal
+    document.getElementById('btn-about').addEventListener('click', openAbout);
+    document.getElementById('btn-about-close').addEventListener('click', closeAbout);
+    document.getElementById('btn-about-ok').addEventListener('click', closeAbout);
+    document.getElementById('about-modal').addEventListener('click', (e) => { if (e.target.id === 'about-modal') closeAbout(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAbout(); });
+    // Guard against losing an in-progress kiosk session to a refresh/close.
+    window.addEventListener('beforeunload', (e) => {
+      if (sessionInProgress()) { e.preventDefault(); e.returnValue = ''; }
+    });
+    if (!('indexedDB' in window)) {
+      showStatus('IndexedDB is not available in this browser — surveys cannot be saved.', 'error');
+      return;
+    }
+    try {
+      state.surveys = await dbGetAllSurveys();
+    } catch (err) {
+      showError('Could not load saved surveys', err);
+      state.surveys = [];
+    }
+    if (state.surveys.length) {
+      const newest = state.surveys.slice().sort((a, b) => b.createdAt - a.createdAt)[0];
+      selectSurvey(newest.id);
+    } else {
+      renderSidebar();
+      renderContent();
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', init);
+})();
+</script>
+</body>
+</html>
